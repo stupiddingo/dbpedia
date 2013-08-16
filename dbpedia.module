@@ -1,0 +1,61 @@
+<?php
+/**
+ * @file
+ * Code for the dbpedia feature.
+ */
+
+include_once 'dbpedia.features.inc';
+
+/**
+ * Hook menu
+ * - add path to autocomplete lookup
+ *
+ */
+function dbpedia_menu() {
+  $items = array();
+  // Autocomplete path
+  $items['dbpedia/autocomplete'] = array(
+    'page callback' => 'dbpedia_autocomplete',
+    'access callback' => TRUE,
+    'access arguments' => array('access dbpedia autocomplete'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Hook form alter
+ * - For dbpedia_example content type, field_species_example textfield add autocomplete
+ *
+ */
+function dbpedia_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'dbpedia_example_node_form') {
+    dpm($form);
+    foreach($form['field_species_example']['und'] as $delta => $field) {
+        if(is_array($field) && is_numeric($delta)) {
+            $form['field_species_example']['und'][$delta]['first']['#autocomplete_path'] = 'dbpedia/autocomplete';
+        }
+    }   
+  }
+}
+
+/**
+ * dbPedia Autocomplete Species Lookup
+ * - get http request from http://wiki.dbpedia.org/lookup/
+ * - parse xml response, return json
+ *
+ */
+function dbpedia_autocomplete($string = '') {
+  $found = array();
+
+  $url = 'http://lookup.dbpedia.org/api/search.asmx/PrefixSearch?QueryString='.urlencode($string).'&QueryClass=Species&MaxHits=10';
+  $result = file_get_contents($url);
+  $data = simplexml_load_string($result);
+
+  foreach($data->Result as $res_temp)
+  {
+      $found[check_plain($res_temp->Label)] = check_plain($res_temp->Label);
+  }
+
+  drupal_json_output($found);
+}
